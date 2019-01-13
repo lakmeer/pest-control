@@ -14,8 +14,9 @@ __lua__
 -- global state
 
 t=0
-p1={con=0,num=1,sel=1,sel_y=0,ship=nil,x=-56,y=-56,col=8, pulse={ 8, 8,2}}
-p2={con=1,num=2,sel=2,sel_y=0,ship=nil,x= 56,y= 56,col=12,pulse={12,12,1}}
+
+p1={con=0,num=1,sel=1,ship=nil,x=-56,y=-56,col=8, pulse={ 8, 8,2}}
+p2={con=1,num=2,sel=2,ship=nil,x= 56,y= 56,col=12,pulse={12,12,1}}
 players={p1,p2}
 winner=nil
 
@@ -1159,7 +1160,7 @@ t_wait=new_timer(60)
 --
 
 t_title_in=new_timer(90)
-t_title_out=new_timer(60)
+t_title_out=new_timer(20)
 
 function show_title ()
  music(0)
@@ -1182,24 +1183,35 @@ function update_title ()
 end
 
 function draw_title ()
+ local top=
+   ease_out(-100,32,t_title_in.p)
+ local btm=
+   ease_out(200,64,t_title_in.p)
+
+ -- flash when beat drops
  if (t_title_in.elf) flash=8
- local top=ease_out(-100,32,t_title_in.p)
-          +ease_in(0,-132,t_title_out.p)
- local btm=ease_out(200,64,t_title_in.p)
-          +ease_in(0,136,t_title_out.p)
- draw_starfield(stars,{x=0,y=t*5})
 
- if (not t_title_in.done) for i=1,15 do pal(i,5) end
- draw_logo(64,top,t/200)
+ -- map all colors to grey
+ -- when animating in
+ if not t_title_in.done then
+  for i=1,15 do pal(i,5) end
+ end
 
+ -- text pulsing rate
+ -- gets faster after btn press
  local tt=t/20
  if (t_title_out.p>0) tt=t/3
+
+ -- draw all the stuff
+ draw_starfield(stars,{x=0,y=t*5})
+ draw_logo(64,top,t/200)
  cprint("by mat, josh and jordan",btm+5,6)
  cprint("(mal didn't help)",      btm+12,5)
- cprint("press    or    to start",btm+30,pulse(split("7, 7,6,5"),tt),0)
- cprint("      🅾️               ",btm+30,pulse(split("7,11,3,1"),tt),-2)
- cprint("            ❎         ",btm+30,pulse(split("7,14,8,2"),tt),-2)
+ cprint("press    or    to start",btm+30,strobe(split("7,7,6,5"),tt),0)
+ print("🅾️",42,btm+30,strobe(split("7,11,3,1"),tt))
+ print("❎",66,btm+30,strobe(split("7,14,8,2"),tt))
  pal()
+ fade(t_title_out.p)
 end
 
 function draw_logo (x,y,t)
@@ -1214,9 +1226,12 @@ end
 -- ship selection --------------
 --
 
+t_choose_in=new_timer(20)
+t_choose_out=new_timer(20)
 t_select={new_timer(15),new_timer(15)}
 
 function show_choose ()
+ pal()
  music(10)
  p1.ship=nil
  p2.ship=nil
@@ -1224,14 +1239,24 @@ function show_choose ()
  t_select[2]:reset()
  curr_update=update_choose
  curr_draw=draw_choose
+ t_choose_in:reset()
 end
 
 function update_choose ()
  choose_inputs(p1)
  choose_inputs(p2)
- if p1.ship!=nil and p2.ship!=nil then
-  if (t_wait.elf) show_ready()
-  if (not t_wait.on) t_wait:reset(10)
+
+ if (t_choose_out.elf) show_ready()
+
+ if not t_choose_out.on then
+  if (t_wait.elf) t_choose_out:reset()
+
+  if p1.ship!=nil and p2.ship!=nil then
+   if not t_wait.on then
+    music(-1,1500)
+    t_wait:reset(11)
+   end
+  end
  end
 end
 
@@ -1273,7 +1298,7 @@ function draw_choose ()
   local c=pl.pulse[3]
   if pl.ship==nil then
    if (p1.sel==p2.sel and pl.con==1) x+=1 y+=1 z-=2
-   c=pulse(pl.pulse,t/12)
+   c=strobe(pl.pulse,t/12)
   end
   rect(x+1,y+1,x+z,y+z,c)
   draw_ship_stats(__ships[pl.sel],pl.con*64,64,pl)
@@ -1287,6 +1312,9 @@ function draw_choose ()
    {ornt=ornt,thrust=seld,stun_t=0},
    ship.design,x,y,14)
  end
+
+ fade(1-t_choose_in.p
+      +t_choose_out.p)
 end
 
 function draw_spec_line (lab,v,x,y,c)
@@ -1319,7 +1347,6 @@ function draw_ship_stats (ship,x,y,pl)
  else
   wave_print("the "..ship.name,x+32,ease_out(y+5,y+28,t_select[pl.num].p),ship.plt,t/30,1.8)
  end
-
 end
 
 
@@ -1333,6 +1360,7 @@ if (_debug_start_round) ready_time=1
 t_ready=new_timer(ready_time)
 
 function show_ready ()
+ pal()
  silence_all()
  new_round()
  cam_seek(midpoint(ships))
@@ -1425,10 +1453,10 @@ function draw_gover ()
  chrome(x-w2,y+14,61,20,t/100)
 
  local btm,tt=y+46,t/20
- print("rematch",    50,btm+0,pulse(split("7,7,6"),tt),0)
- print("choose ship",50,btm+7,pulse(split("7,7,6"),tt),0)
- print("🅾️",40,btm+0,pulse(split("7,11,3,1"),tt),-2)
- print("❎",40,btm+7,pulse(split("7,14,8,2"),tt),-2)
+ print("rematch",    50,btm+0,strobe(split("7,7,6"),tt),0)
+ print("choose ship",50,btm+7,strobe(split("7,7,6"),tt),0)
+ print("🅾️",40,btm+0,strobe(split("7,11,3,1"),tt),-2)
+ print("❎",40,btm+7,strobe(split("7,14,8,2"),tt),-2)
 end
 
 -->8
@@ -1562,7 +1590,22 @@ end
 
 -- color fx
 
-function pulse (plt,t)
+function fade (p)
+ -- from lazydev's breakout hero
+ -- which is from jelpi actually
+ local p=flr(mid(0,p,1)*100)
+ local kmax,c,d,j,k
+ d=split("0,1,1,2,1,13,6,4,4,9,3,13,1,13,14")
+
+ for j=1,15 do
+  c=j
+  kmax=(p+(j*1.46))/22
+  for k=1,kmax do c=d[c] end
+  pal(j,c,1)
+ end
+end
+
+function strobe (plt,t)
  return plt[1+flr(#plt*(0.5+0.49*sin(t)))]
 end
 
@@ -1624,7 +1667,7 @@ function wave_print (txt,cent,top,plt,t,z)
     sub(str,i,i),
     x,
     top+z*sin(t-x/32)+(n-1)*9,
-    pulse(plt,i/16+t*2.2),
+    strobe(plt,i/16+t*2.2),
     7)
   end
  end
@@ -1905,7 +1948,7 @@ end
 
 function silence_all ()
  for i=0,3 do sfx(-1,i) end
- music(-1,1500)
+ music(-1)
 end
 
 
@@ -1957,6 +2000,13 @@ end
 
 function _rf (x,y,w,h,c)
  rectfill(x,y,x+w-1,y+h-1,c)
+end
+
+
+-- debugging helpers
+
+function __ (str)
+ add(debug,str)
 end
 
 
